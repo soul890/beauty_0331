@@ -5,6 +5,9 @@ function App() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [height, setHeight] = useState('')
   const [weight, setWeight] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [report, setReport] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,9 +19,28 @@ function App() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({ photo, height, weight })
+    if (!photo || !height || !weight) return
+
+    setLoading(true)
+    setError(null)
+    setReport(null)
+
+    try {
+      const res = await fetch('/api/consult', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photo, height, weight }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || '요청에 실패했습니다.')
+      setReport(data.report)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -70,10 +92,26 @@ function App() {
           />
         </div>
 
-        <button type="submit" className="submit-btn">
-          프로필 저장
+        <button type="submit" className="submit-btn" disabled={loading}>
+          {loading ? '분석 중...' : '스타일 컨설팅 받기'}
         </button>
       </form>
+
+      {loading && (
+        <div className="loading-section">
+          <div className="spinner" />
+          <p>스타일을 분석하고 있습니다...</p>
+        </div>
+      )}
+
+      {error && <div className="error-message">{error}</div>}
+
+      {report && (
+        <div className="report-section">
+          <h2>스타일 컨설팅 보고서</h2>
+          <div className="report-content">{report}</div>
+        </div>
+      )}
     </div>
   )
 }
